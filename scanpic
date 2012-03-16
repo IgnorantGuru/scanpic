@@ -1,0 +1,412 @@
+#!/bin/bash
+# Script Name: scanpic    http://igurublog.wordpress.com/downloads/script-scanpic/ 
+# Requires: imagemagick sane sane-utils
+# License: GNU GENERAL PUBLIC LICENSE Version 3 http://www.gnu.org/licenses/gpl-3.0.txt
+
+
+# User Defaults
+colmode="24bit Color"
+size="2560x2560"
+quality="90"
+res="600"
+form="full"
+device=""	# enter default scanner device name; see "scanimage --list"
+l="0"		# x offset in mm
+t="0"		# y offset in mm
+rotate=0
+
+# init
+x=""
+y=""
+bright=""
+contrast=""
+argsneeded=1
+
+# Get scanner device name
+if [ "$device" = "" ]; then
+	getdevice=`scanimage -L | grep scanner | head -n 1`
+	if [ "$getdevice" != "" ]; then
+		getdevice=${getdevice#device \`}
+		getdevice=${getdevice%%:*}
+		device=$getdevice
+	fi
+fi
+
+help ()
+{
+	echo "scanpic version 1.0.0"
+	echo "Scans pic to jpg file on scanner device $device"
+	echo "Requires: sane sane-utils imagemagick"
+	echo "Usage:   scanpic [OPTIONS] OUTPUTFILENAME.JPG"
+	echo 'Example: scanpic --opt 4x6v,gray --size 1280x1280 myscan.jpg'
+	echo '         scans 4x6 vertical grayscale print to 1280x1280(max) jpeg'
+	echo "Options:"
+	echo "   --opt <option>,<option>,...   image options (see below)"
+	echo "   --size <width>x<height>       max final size (pixels) (overrides opt)"
+	echo "                                 [default $size]"
+	echo "   --quality <0...100>           jpeg quality (overrides opt)"
+	echo "                                 [default $quality]"
+	echo "   --dims <width>x<height>       scan size (mm) (overrides opt)"
+	echo "                                 [default $form]"
+	echo "   --offset <width>x<height>     offset (mm) (overrides opt)"
+	echo "                                 [default $l"x"$t"']'
+	echo "   --res <dpi>                   resolution dpi (overrides opt)"
+	echo "                                 [default $res]"
+	echo "   --rotate <degrees>            rotation (overrides opt) [default $rotate]"
+	echo "   --bright <-50...50%>          scan brightness (overrides opt)"
+	echo "   --contrast <-50...50%>        scan contrast (overrides opt)"
+	echo "   --device DEVICENAME           scanner device (see: scanimage --list)"
+	echo "                                 [default $device]"
+	echo "opt arguments:"
+	echo '   bw         color mode "Black & White"'
+	echo '   gray       color mode "True Gray"'
+	echo '   col        color mode "24bit Color"'
+	echo '   page       scan size 8.5x11" gray - no offset'
+	echo '   walletv    scan size 44x64mm vertical'
+	echo '   pocketv    scan size 60x85mm vertical'
+	echo '   pocketh    scan size 85x60mm horiz'
+	echo '   3.5x5v     scan size 3.5x5" vertical'
+	echo '   3.5x5h     scan size 3.5x5" horiz'
+	echo '   3.5x5sv    scan size 3.5x5" (slightly smaller than 5") vertical'
+	echo '   3.5x5sh    scan size 3.5x5" (slightly smaller than 5") horiz'
+	echo '   4.25x3.5h  scan size 4.25x3.5" horiz'
+	echo '   4x6v       scan size 4x6" vertical'
+	echo '   4x6h       scan size 4x6" horiz'
+	echo '   4x10       scan size 4x10" (place vertical)'
+	echo '   5x7        vscan size 5x7" vertical'
+	echo '   5x7h       scan size 5x7" horiz'
+	echo '   8x10v      scan size 8x10" vertical' 
+	echo '   8x10h      scan size 8x10" horiz (place vertical)' 
+	echo '   polaroidh  Polaroid horiz'
+	echo 'Note: Place --opt before other options.'
+	exit
+}
+
+#Process arguments
+index=0
+while [ "$1" != "" ];
+do
+	if [ "${1:0:1}" = "-" ]; then
+		case "$1" in
+			--device )
+				if [ "$2" == "" ]; then
+					echo Option $1 requires argument
+					exit
+				fi
+				device="$2"
+				shift
+				;;
+			--help | -help )
+				help
+				;;
+			--opt )
+				if [ "$2" == "" ]; then
+					echo Option $1 requires argument
+					exit
+				fi
+				opt="$2"
+				while [ -n "$opt" ]
+				do
+					# get subopt
+					subopt=${opt%%,*}
+					newopt=${opt#*,}
+					if [ "$newopt" == "$opt" ]; then
+						opt=""
+					else
+						opt="$newopt"
+					fi
+					case "$subopt" in
+						bw )
+							colmode="Black & White";;
+						gray )
+							colmode="True Gray";;
+						col )
+							colmode="24bit Color";;
+						page )
+							form=$subopt
+							l=0
+							t=0
+							x=220
+							y=278
+							res=300
+							size="1280x1280"
+							colmode="True Gray"
+							;;
+						walletv )
+							form=$subopt
+							l=13
+							t=4.5
+							x=44
+							y=64
+							;;
+						pocketv )
+							form=$subopt
+							l=13
+							t=4.5
+							x=60
+							y=85
+							;;
+						pocketh )
+							form=$subopt
+							l=13
+							t=4.5
+							x=85
+							y=60
+							;;
+						4.25x3.5h )
+							form=$subopt
+							l=13
+							t=4.5
+							x=110
+							y=89
+							;;
+						3.5x5sv )
+							form=$subopt
+							l=13
+							t=4.5
+							x=89
+							y=125
+							;;
+						3.5x5sh )
+							form=$subopt
+							l=13
+							t=4.5
+							x=125
+							y=89
+							;;
+						3.5x5h )
+							form=$subopt
+							l=13
+							t=4.5
+							x=130
+							y=89
+							;;
+						3.5x5v )
+							form=$subopt
+							l=13
+							t=4.5
+							x=89
+							y=130
+							;;
+						polaroidh )
+							form=$subopt
+							l=18
+							t=14.5
+							x=91
+							y=68
+							;;
+						4x6v )
+							form=$subopt
+							l=12
+							t=4.5
+							x=101
+							y=152
+							;;
+						4x6h )
+							form=$subopt
+							l=12
+							t=5
+							x=152
+							y=101
+							;;
+						5x7v )
+							form=$subopt
+							l=12
+							t=5
+							x=126
+							y=178
+							;;
+						5x7h )
+							form=$subopt
+							l=12
+							t=5
+							x=178
+							y=126
+							;;
+						4x10 )
+							form=$subopt
+							l=12
+							t=4.5
+							x=101
+							y=250.8
+							rotate=90
+							;;
+						8x10v )
+							form=$subopt
+							l=12
+							t=4.5
+							x=206
+							y=252
+							;;
+						8x10h )
+							form=$subopt
+							l=12
+							t=4.5
+							x=206
+							y=252
+							rotate=90
+							;;
+						* )
+							echo Unrecognized --opt $subopt
+							exit
+							;;
+					esac
+				done
+				shift
+				;;
+			--size )
+				if [ "$2" == "" ]; then
+					echo Option $1 requires argument
+					exit
+				fi
+				size="$2"
+				shift
+				;;
+			--res )
+				if [ "$2" == "" ]; then
+					echo Option $1 requires argument
+					exit
+				fi
+				res="$2"
+				shift
+				;;
+			--bright )
+				if [ "$2" == "" ]; then
+					echo Option $1 requires argument
+					exit
+				fi
+				bright="--brightness=$2"
+				shift
+				;;
+			--contrast )
+				if [ "$2" == "" ]; then
+					echo Option $1 requires argument
+					exit
+				fi
+				contrast="--contrast=$2"
+				shift
+				;;
+			--quality )
+				if [ "$2" == "" ]; then
+					echo Option $1 requires argument
+					exit
+				fi
+				quality="$2"
+				shift
+				;;
+			--rotate )
+				if [ "$2" == "" ]; then
+					echo Option $1 requires argument
+					exit
+				fi
+				rotate="$2"
+				shift
+				;;
+			--dims )
+				if [ "$2" == "" ]; then
+					echo Option $1 requires argument
+					exit
+				fi
+				arg="$2"
+				x=${arg%x*}
+				y=${arg#*x}
+				if (( x == 0 )) || (( y == 0 )); then
+					echo "Option $1 requires <width>x<height> argument"
+					exit
+				fi
+				shift
+				;;
+			--offset )
+				if [ "$2" == "" ]; then
+					echo Option $1 requires argument
+					exit
+				fi
+				arg="$2"
+				l=${arg%x*}
+				t=${arg#*x}
+				if (( x == 0 )) || (( y == 0 )); then
+					echo "Option $1 requires <width>x<height> argument"
+					exit
+				fi
+				shift
+				;;
+			* )
+				echo Unknown option $1
+				exit
+				;;
+		esac
+	else
+		let "index+=1"
+		case $index in
+			1 )
+				outfile="$1"
+				;;
+			* )
+				echo Too many arguments
+				exit
+				;;
+		esac
+	fi
+	shift
+done
+if (( index < $argsneeded )); then
+	help
+fi
+
+if [ "$device" = "" ]; then
+	echo "scanpic: couldn't determine scanner device name.  Try:"
+	echo "         scanimage --list"
+	echo "         Then:"
+	echo "         scanpic --device SCANNERDEVICENAME myscan.jpg"
+	exit 1
+fi
+
+# Get pathname and filename
+filename=`basename "$outfile"`
+xx=${#filename}  #len
+yy=${#outfile}  #len
+pathname="${outfile:0:((yy-xx))}"
+if [ "$pathname" == "" ]; then
+	pathname="."
+fi
+
+echo "Form:         $form"
+if [ "$x" == "" ] || [ "$y" == "" ]; then
+	echo "Scan Size:    full (215.88 x 355.567 mm)"
+	x=""
+	y=""
+else
+	echo "Scan Size:    $x x $y mm"
+fi
+echo "Scan Offset:  $l x $t mm"
+echo "Resolution:   $res"
+echo "Color Mode:   $colmode"
+echo "Device:       $device"
+echo "Rotation:     $rotate degrees"
+echo "JPEG Size:    $size (max)"
+echo "JPEG Quality: $quality"
+echo
+
+tmpfile="$pathname/scanpic-temp.pnm"
+rm -f "$tmpfile"
+
+if [ "$x" == "" ]; then
+	scanimage --device=$device --mode="$colmode" --resolution=$res $bright $contrast --format=pnm --progress -l $l -t $t > "$tmpfile"
+else
+	scanimage --device=$device --mode="$colmode" --resolution=$res $bright $contrast --format=pnm --progress -l $l -t $t -x $x -y $y > "$tmpfile"
+fi
+
+echo
+echo Scan complete.  Converting...
+
+if [ "$rotate" = "0" ]; then
+	convert "$tmpfile" -resize ">$size" -filter Lanczos -quality $quality "$outfile"
+else
+	convert "$tmpfile" -resize ">$size" -filter Lanczos -quality $quality -rotate $rotate "$outfile"
+fi
+
+rm -f $tmpfile
+
+echo Done.
+
+exit

@@ -1,0 +1,45 @@
+README for scanpic
+
+
+OVERVIEW
+    
+Scanpic allows you to scan images of a specified size from the command line 
+without use of a GUI and without needing to crop the image afterward. I 
+wrote this script when I had hundreds of old pics of various sizes to scan, 
+and I didn’t want to have to crop them all individually.
+
+Homepage & Instructions:
+    http://igurublog.wordpress.com/downloads/script-scanpic/
+
+Downloads:
+    https://github.com/IgnorantGuru/scanpic
+    https://github.com/IgnorantGuru/sedname/tree/master/packages
+   
+
+INSTALLATION
+
+To install:
+
+    wget https://github.com/IgnorantGuru/scanpic/raw/master/scanpic
+    sudo install scanpic /usr/local/bin/scanpic
+
+To remove:
+    
+    sudo rm /usr/local/bin/scanpic
+
+
+LICENSE
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
